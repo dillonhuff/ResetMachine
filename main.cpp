@@ -1,6 +1,10 @@
 #include "coreir.h"
+#include "coreir/simulator/interpreter.h"
+#include "coreir/passes/transform/rungenerators.h"
 
 using namespace CoreIR;
+using namespace CoreIR::Passes;
+using namespace std;
 
 void addIncrementer(Context* c, Namespace* global) {
 
@@ -103,12 +107,49 @@ void addCounter(Context* c, Namespace* global) {
   
 }
 
+void testIncrementer(Context* c, Namespace* global) {
+
+  uint pcWidth = 3;
+
+  Type* incTestType =
+    c->Record({{"incIn", c->Array(pcWidth, c->BitIn())},
+	{"incOut", c->Array(pcWidth, c->Bit())}});
+
+  Module* incTest = global->newModuleDecl("incMod", incTestType);
+  ModuleDef* def = incTest->newModuleDef();
+
+
+  def->addInstance("incrementer", "global.inc", {{"width", Const(pcWidth)}});
+
+  def->connect("self.incIn", "incrementer.in");
+  def->connect("incrementer.out", "self.incOut");
+
+  incTest->setDef(def);
+
+  RunGenerators rg;
+  rg.runOnNamespace(global);
+
+  // Inline increment
+  inlineInstance(def->getInstances()["incrementer"]);
+
+  SimulatorState state(incTest);
+  state.setValue("self.incIn", BitVec(pcWidth, 0));
+
+  state.execute();
+
+  assert(state.getBitVec("self.incOut") == BitVec(pcWidth, 1));
+
+}
+
+
 int main() {
   Context* c = newContext();
   Namespace* global = c->getGlobal();
 
   addCounter(c, global);
   addIncrementer(c, global);
+
+  testIncrementer(c, global);
 
   uint pcWidth = 3;
   uint memDepth = pow(2, pcWidth);
@@ -140,9 +181,15 @@ int main() {
 		   {{"init", Const("0")}});
 
   def->addInstance("incrementer", "global.inc", {{"width", Const(pcWidth)}});
-  
 
   resetMachine->setDef(def);
 
   resetMachine->print();
+
+  cout << "Checking saving and loading pregen" << endl;
+  if (!saveToFile(global, "resetMachine.json", resetMachine)) {
+    cout << "Could not save to json!!" << endl;
+    c->die();
+  }
+
 }

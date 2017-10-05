@@ -139,6 +139,14 @@ void testIncrementer(Context* c, Namespace* global) {
 
   assert(state.getBitVec("self.incOut") == BitVec(pcWidth, 1));
 
+  state.setValue("self.incIn", BitVec(pcWidth, (1 << 2) | (1 << 1) | 1));
+
+  state.execute();
+
+  cout << "Output = " << state.getBitVec("self.incOut") << endl;
+
+  assert(state.getBitVec("self.incOut") == BitVec(pcWidth, 0));
+
 }
 
 

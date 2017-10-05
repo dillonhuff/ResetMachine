@@ -117,6 +117,56 @@ TEST_CASE("Counter") {
 
   addCounter(c, global);
 
+  uint pcWidth = 17;
+  Type* counterTestType =
+    c->Record({
+	{"en", c->BitIn()},
+	  {"clk", c->Named("coreir.clkIn")},
+	    {"counterOut", c->Array(pcWidth, c->Bit())}});
+
+  Module* counterTest = global->newModuleDecl("counterMod", counterTestType);
+  ModuleDef* def = counterTest->newModuleDef();
+
+  def->addInstance("counter", "global.counter", {{"width", Const(pcWidth)}});
+
+  def->connect("self.en", "counter.en");
+  def->connect("self.clk", "counter.clk");
+  def->connect("counter.out", "self.counterOut");
+
+  counterTest->setDef(def);
+
+  RunGenerators rg;
+  rg.runOnNamespace(global);
+
+  // Inline increment
+  inlineInstance(def->getInstances()["counter"]);
+
+  SimulatorState state(counterTest);
+  state.setValue("counter$ri.out", BitVec(pcWidth, 400));
+  state.setClock("self.clk", 0, 1);
+
+  state.execute();
+
+  REQUIRE(state.getBitVec("self.counterOut") == BitVec(pcWidth, 401));
+
+  state.setValue("counter$ri.out", BitVec(pcWidth, 400));  
+  state.setClock("self.clk", 0, 1);
+  
+  state.execute();
+
+  cout << "Output = " << state.getBitVec("self.counterOut") << endl;
+
+  REQUIRE(state.getBitVec("self.counterOut") == BitVec(pcWidth, 24));
+
+  state.setValue("counter$ri.out", BitVec(pcWidth, 400));
+  state.setClock("self.clk", 1, 0);
+  
+  state.execute();
+
+  cout << "Output = " << state.getBitVec("self.counterOut") << endl;
+
+  REQUIRE(state.getBitVec("self.counterOut") == BitVec(pcWidth, 400));
+  
 }
 
 TEST_CASE("Incrementer") {

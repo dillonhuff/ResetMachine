@@ -67,8 +67,26 @@ int main() {
   uint pcWidth = 3;
 
   Type* resetMachineType =
-    c->Record({{"countOut", c->Array(pcWidth, c->Bit())}});
+    c->Record({{"clk", c->Named("coreir.clkIn")},
+	  {"countOut", c->Array(pcWidth, c->Bit())}});
 
-  
-  
+  Module* resetMachine = global->newModuleDecl("ResetMachine", resetMachineType);
+  ModuleDef* def = resetMachine->newModuleDef();
+
+  // Create components of the machine, pc, stage counter, decoder, memory,
+  // reset constant, multiplexer
+  def->addInstance("pc",
+		   "coreir.reg",
+		   {{"width", Const(pcWidth)}, {"en", Const(false)}});
+
+  def->addInstance("stageCounter", "global.counter", {{"width", Const(1)}});
+
+  def->addInstance("pcMultiplexer", "coreir.mux", {{"width", Const(pcWidth)}});
+
+  Args wArg({{"width", Const(pcWidth)}});
+  def->addInstance("resetConstant", "coreir.const", wArg, {{"value", Const(0)}});
+
+  resetMachine->setDef(def);
+
+  resetMachine->print();
 }

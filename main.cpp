@@ -2,6 +2,51 @@
 
 using namespace CoreIR;
 
+void addIncrementer(Context* c, Namespace* global) {
+
+  Params incParams({{"width", AINT}});
+  //Other param types: ABOOL,ASTRING,ATYPE
+
+  TypeGen* incTypeGen = global->newTypeGen(
+    "IncTypeGen", //name of typegen
+    incParams, //Params required for typegen
+    [](Context* c, Args args) { //lambda for generating the type
+
+      uint width = args.at("width")->get<int>();
+
+      return c->Record({
+	  {"in", c->Array(width, c->BitIn())},
+	    {"out",c->Array(width,c->Bit())},
+      });
+    } //end lambda
+  ); //end newTypeGen
+
+  ASSERT(global->hasTypeGen("IncTypeGen"),"Can check for typegens in namespaces");
+
+
+  //Now lets create a generator declaration for our inc
+  Generator* inc = global->newGeneratorDecl("inc", incTypeGen, incParams);
+  //The third argument is the inc parameters. This needs to be a superset of the parameters for the typegen.
+  
+  //Now lets define our generator function. I am going to use a lambda again, but you could pass in
+  //  a normal function with the same type signature.
+  inc->setGeneratorDefFromFun([](ModuleDef* def,Context* c, Type* t, Args args) {
+    //Similar to the typegen, lets extract the width;
+    uint width = args.at("width")->get<int>();
+      
+    //Now just define the inc with with all the '16's replaced by 'width'
+    Args wArg({{"width", Const(width)}});
+    def->addInstance("ai","coreir.add",wArg);
+    def->addInstance("ci","coreir.const",wArg,{{"value", Const(1)}});
+    
+    //Connections
+    def->connect("ci.out","ai.in0");
+    def->connect("self.in","ai.in1");
+    def->connect("ai.out","self.out");
+  }); //end lambda, end function
+
+}
+
 void addCounter(Context* c, Namespace* global) {
   //Now lets make our counter as a generator.
   //We want our Generator to be able to take in the parameter width.
@@ -63,8 +108,11 @@ int main() {
   Namespace* global = c->getGlobal();
 
   addCounter(c, global);
+  addIncrementer(c, global);
 
   uint pcWidth = 3;
+  uint memDepth = pow(2, pcWidth);
+  uint memWidth = 1;
 
   Type* resetMachineType =
     c->Record({{"clk", c->Named("coreir.clkIn")},
@@ -77,7 +125,7 @@ int main() {
   // reset constant, multiplexer
   def->addInstance("pc",
 		   "coreir.reg",
-		   {{"width", Const(pcWidth)}, {"en", Const(false)}});
+		   {{"width", Const(pcWidth)}, {"en", Const(true)}});
 
   def->addInstance("stageCounter", "global.counter", {{"width", Const(1)}});
 
@@ -85,6 +133,14 @@ int main() {
 
   Args wArg({{"width", Const(pcWidth)}});
   def->addInstance("resetConstant", "coreir.const", wArg, {{"value", Const(0)}});
+
+  def->addInstance("mainMem",
+		   "coreir.mem",
+		   {{"width", Const(memWidth)},{"depth", Const(memDepth)}},
+		   {{"init", Const("0")}});
+
+  def->addInstance("incrementer", "global.inc", {{"width", Const(pcWidth)}});
+  
 
   resetMachine->setDef(def);
 

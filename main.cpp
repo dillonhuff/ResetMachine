@@ -143,13 +143,15 @@ TEST_CASE("Counter") {
 
   SimulatorState state(counterTest);
   state.setValue("counter$ri.out", BitVec(pcWidth, 400));
+  state.setValue("self.en", BitVec(1, 1));
   state.setClock("self.clk", 0, 1);
 
   state.execute();
 
   REQUIRE(state.getBitVec("self.counterOut") == BitVec(pcWidth, 401));
 
-  state.setValue("counter$ri.out", BitVec(pcWidth, 400));  
+  state.setValue("counter$ri.out", BitVec(pcWidth, 400));
+  state.setValue("self.en", BitVec(1, 1));
   state.setClock("self.clk", 0, 1);
   
   state.execute();
@@ -159,6 +161,7 @@ TEST_CASE("Counter") {
   REQUIRE(state.getBitVec("self.counterOut") == BitVec(pcWidth, 24));
 
   state.setValue("counter$ri.out", BitVec(pcWidth, 400));
+  state.setValue("self.en", BitVec(1, 1));
   state.setClock("self.clk", 1, 0);
   
   state.execute();

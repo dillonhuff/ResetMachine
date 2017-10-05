@@ -1,3 +1,7 @@
+#define CATCH_CONFIG_MAIN
+
+#include "catch.hpp"
+
 #include "coreir.h"
 #include "coreir/simulator/interpreter.h"
 #include "coreir/passes/transform/rungenerators.h"
@@ -107,7 +111,19 @@ void addCounter(Context* c, Namespace* global) {
   
 }
 
-void testIncrementer(Context* c, Namespace* global) {
+TEST_CASE("Counter") {
+  Context* c = newContext();
+  Namespace* global = c->getGlobal();
+
+  addCounter(c, global);
+
+}
+
+TEST_CASE("Incrementer") {
+  Context* c = newContext();
+  Namespace* global = c->getGlobal();
+
+  addIncrementer(c, global);
 
   uint pcWidth = 3;
 
@@ -137,7 +153,7 @@ void testIncrementer(Context* c, Namespace* global) {
 
   state.execute();
 
-  assert(state.getBitVec("self.incOut") == BitVec(pcWidth, 1));
+  REQUIRE(state.getBitVec("self.incOut") == BitVec(pcWidth, 1));
 
   state.setValue("self.incIn", BitVec(pcWidth, (1 << 2) | (1 << 1) | 1));
 
@@ -145,19 +161,16 @@ void testIncrementer(Context* c, Namespace* global) {
 
   cout << "Output = " << state.getBitVec("self.incOut") << endl;
 
-  assert(state.getBitVec("self.incOut") == BitVec(pcWidth, 0));
+  REQUIRE(state.getBitVec("self.incOut") == BitVec(pcWidth, 0));
 
 }
 
-
-int main() {
+TEST_CASE("Full machine build") {
   Context* c = newContext();
   Namespace* global = c->getGlobal();
 
   addCounter(c, global);
   addIncrementer(c, global);
-
-  testIncrementer(c, global);
 
   uint pcWidth = 3;
   uint memDepth = pow(2, pcWidth);
@@ -199,5 +212,4 @@ int main() {
     cout << "Could not save to json!!" << endl;
     c->die();
   }
-
 }

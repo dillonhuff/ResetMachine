@@ -10,6 +10,48 @@ using namespace CoreIR;
 using namespace CoreIR::Passes;
 using namespace std;
 
+void addIncReset(Context* c, Namespace* global) {
+  Params incResetParams({{"width", AINT}});
+
+  TypeGen* incResetTypeGen =
+    global->newTypeGen("IncResetTypeGen",
+		       incResetParams,
+		       [](Context* c, Args args) {
+			 uint width = args.at("width")->get<int>();
+
+			 return c->Record({
+			     {"selectBit", c->BitIn()},
+			       {"in", c->Array(width, c->BitIn())},
+				 {"out", c->Array(width, c->Bit())}
+			   });
+		       }
+		       );
+
+  Generator* inc = global->newGeneratorDecl("incReset",
+					    incResetTypeGen,
+					    incResetParams);
+
+  inc->setGeneratorDefFromFun([](ModuleDef* def,Context* c, Type* t, Args args) {
+    uint width = args.at("width")->get<int>();
+      
+    def->addInstance("pcMultiplexer", "coreir.mux", {{"width", Const(width)}});
+    def->addInstance("incrementer", "global.inc", {{"width", Const(width)}});
+    Args wArg({{"width", Const(width)}});
+    def->addInstance("resetConstant", "coreir.const", wArg, {{"value", Const(0)}});
+
+    // Connections
+    def->connect("self.selectBit", "pcMultiplexer.sel");
+    def->connect("self.in", "incrementer.in");
+
+    def->connect("incrementer.out", "pcMultiplexer.in0");
+    def->connect("resetConstant.out", "pcMultiplexer.in1");
+
+    def->connect("pcMultiplexer.out", "self.out");
+    
+  });
+  
+}
+
 void addIncrementer(Context* c, Namespace* global) {
 
   Params incParams({{"width", AINT}});
@@ -211,6 +253,56 @@ TEST_CASE("Incrementer") {
 
 }
 
+TEST_CASE("Increment or reset") {
+  Context* c = newContext();
+  Namespace* global = c->getGlobal();
+
+  addIncrementer(c, global);
+  addIncReset(c, global);
+
+  uint width = 62;
+
+  Type* irType =
+    c->Record({
+	{"in", c->Array(width, c->BitIn())},
+	  {"out", c->Array(width, c->Bit())},
+	    {"reset", c->BitIn()}
+      });
+
+  Module* irM = global->newModuleDecl("irM", irType);
+  ModuleDef* def = irM->newModuleDef();
+
+  def->addInstance("ir", "global.incReset", {{"width", Const(width)}});
+
+  def->connect("self.in", "ir.in");
+  def->connect("self.reset", "ir.selectBit");
+  def->connect("ir.out", "self.out");
+
+  irM->setDef(def);
+
+  RunGenerators rg;
+  rg.runOnNamespace(global);
+
+  // Inline increment
+  inlineInstance(def->getInstances()["ir"]);
+  inlineInstance(def->getInstances()["ir$incrementer"]);
+
+  cout << "Checking saving and loading pregen" << endl;
+  if (!saveToFile(global, "incReset.json", irM)) {
+    cout << "Could not save to json!!" << endl;
+    c->die();
+  }
+
+  SimulatorState state(irM);
+  state.setValue("self.in", BitVec(width, 0));
+  state.setValue("self.reset", BitVec(width, 1));
+
+  state.execute();
+
+  REQUIRE(state.getBitVec("self.out") == BitVec(width, 0));
+  
+}
+
 TEST_CASE("Full machine build") {
   Context* c = newContext();
   Namespace* global = c->getGlobal();
@@ -237,17 +329,12 @@ TEST_CASE("Full machine build") {
 
   def->addInstance("stageCounter", "global.counter", {{"width", Const(1)}});
 
-  def->addInstance("pcMultiplexer", "coreir.mux", {{"width", Const(pcWidth)}});
-
-  Args wArg({{"width", Const(pcWidth)}});
-  def->addInstance("resetConstant", "coreir.const", wArg, {{"value", Const(0)}});
-
   def->addInstance("mainMem",
 		   "coreir.mem",
 		   {{"width", Const(memWidth)},{"depth", Const(memDepth)}},
 		   {{"init", Const("0")}});
 
-  def->addInstance("incrementer", "global.inc", {{"width", Const(pcWidth)}});
+
 
   resetMachine->setDef(def);
 

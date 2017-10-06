@@ -148,22 +148,15 @@ TEST_CASE("Counter") {
 
   state.execute();
 
-  REQUIRE(state.getBitVec("self.counterOut") == BitVec(pcWidth, 401));
+  REQUIRE(state.getBitVec("self.counterOut") == BitVec(pcWidth, 400));
 
   state.setValue("counter$ri.out", BitVec(pcWidth, 400));
-  state.setValue("self.en", BitVec(1, 1));
+  state.setValue("self.en", BitVec(1, 0));
   state.setClock("self.clk", 0, 1);
   
   state.execute();
-
-  cout << "Output = " << state.getBitVec("self.counterOut") << endl;
-
-  REQUIRE(state.getBitVec("self.counterOut") == BitVec(pcWidth, 24));
-
-  state.setValue("counter$ri.out", BitVec(pcWidth, 400));
-  state.setValue("self.en", BitVec(1, 1));
-  state.setClock("self.clk", 1, 0);
-  
+  state.execute();
+  state.execute();
   state.execute();
 
   cout << "Output = " << state.getBitVec("self.counterOut") << endl;

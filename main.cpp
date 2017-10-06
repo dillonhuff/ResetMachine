@@ -334,8 +334,6 @@ TEST_CASE("Full machine build") {
 		   {{"width", Const(memWidth)},{"depth", Const(memDepth)}},
 		   {{"init", Const("0")}});
 
-
-
   resetMachine->setDef(def);
 
   resetMachine->print();

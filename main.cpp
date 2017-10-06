@@ -294,13 +294,27 @@ TEST_CASE("Increment or reset") {
   }
 
   SimulatorState state(irM);
-  state.setValue("self.in", BitVec(width, 0));
-  state.setValue("self.reset", BitVec(width, 1));
 
-  state.execute();
+  SECTION("Reset") {
+    state.setValue("self.in", BitVec(width, 23));
+    state.setValue("self.reset", BitVec(1, 1));
 
-  REQUIRE(state.getBitVec("self.out") == BitVec(width, 0));
-  
+    state.execute();
+
+    REQUIRE(state.getBitVec("self.out") == BitVec(width, 0));
+
+  }
+
+  SECTION("No reset") {
+    state.setValue("self.in", BitVec(width, 236));
+    state.setValue("self.reset", BitVec(1, 0));
+
+    state.execute();
+
+    REQUIRE(state.getBitVec("self.out") == BitVec(width, 237));
+
+  }
+
 }
 
 TEST_CASE("Full machine build") {

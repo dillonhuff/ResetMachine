@@ -405,7 +405,7 @@ TEST_CASE("Full machine build") {
   // Simulate
   SimulatorState state(resetMachine);
   state.setMemory("mainMem", BitVec(3, 0), BitVec(1, 0));
-  state.setMemory("mainMem", BitVec(3, 1), BitVec(1, 0));
+  state.setMemory("mainMem", BitVec(3, 1), BitVec(1, 1));
   state.setMemory("mainMem", BitVec(3, 2), BitVec(1, 1));
 
   // Set dummy inputs

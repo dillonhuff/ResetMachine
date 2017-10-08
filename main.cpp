@@ -400,6 +400,15 @@ TEST_CASE("Full machine build") {
   state.setMemory("mainMem", BitVec(3, 0), BitVec(1, 0));
   state.setMemory("mainMem", BitVec(3, 1), BitVec(1, 0));
   state.setMemory("mainMem", BitVec(3, 2), BitVec(1, 1));
+
+  state.setMainClock("self.clk");
+  state.setClock("self.clk", 0, 1);
+
+  state.setWatchPoint("mainMem.rdata", BitVec(1, 1));
+
+  state.run();
+
+  cout << "Now on state " << state.getStateIndex() << endl;
   
   resetMachine->print();
 

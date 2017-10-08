@@ -317,12 +317,17 @@ TEST_CASE("Increment or reset") {
 
 }
 
+TEST_CASE("Enabled memory") {
+  
+}
+
 TEST_CASE("Full machine build") {
   Context* c = newContext();
   Namespace* global = c->getGlobal();
 
   addCounter(c, global);
   addIncrementer(c, global);
+  addIncReset(c, global);
 
   uint pcWidth = 3;
   uint memDepth = pow(2, pcWidth);
@@ -343,11 +348,36 @@ TEST_CASE("Full machine build") {
 
   def->addInstance("stageCounter", "global.counter", {{"width", Const(1)}});
 
+  def->addInstance("counterAnd", "coreir.andr", {{"width", Const(1)}});
+
+  // Creating memory that is always enabled
+
+  Args wArg({{"width", Const(pcWidth)}});
+  def->addInstance("resetConstant", "coreir.const", wArg, {{"value", Const(0)}});
+
   def->addInstance("mainMem",
 		   "coreir.mem",
 		   {{"width", Const(memWidth)},{"depth", Const(memDepth)}},
 		   {{"init", Const("0")}});
 
+  def->addInstance("incR", "global.incReset", {{"width", Const(pcWidth)}});
+  
+
+  // Connect machine components
+
+  // Connect clock to sequential elements
+  def->connect("self.clk", "stageCounter.clk");
+  def->connect("self.clk", "pc.clk");
+  def->connect("self.clk", "mainMem.clk");
+
+
+  // Connect stage counter to pc
+  // TODO: Add andr node to eliminate this hack
+  def->connect("stageCounter.out", "counterAnd.in");
+  def->connect("counterAnd.out", "pc.en");
+  
+
+  // Set definition and save
   resetMachine->setDef(def);
 
   resetMachine->print();

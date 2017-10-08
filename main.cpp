@@ -394,12 +394,24 @@ TEST_CASE("Full machine build") {
 
   // Set definition and save
   resetMachine->setDef(def);
+  
+  RunGenerators rg;
+  rg.runOnNamespace(global);
+  
+  inlineInstance(def->getInstances()["incR"]);
+  inlineInstance(def->getInstances()["incR$incrementer"]);
+  inlineInstance(def->getInstances()["stageCounter"]);
 
   // Simulate
   SimulatorState state(resetMachine);
   state.setMemory("mainMem", BitVec(3, 0), BitVec(1, 0));
   state.setMemory("mainMem", BitVec(3, 1), BitVec(1, 0));
   state.setMemory("mainMem", BitVec(3, 2), BitVec(1, 1));
+
+  // Set dummy inputs
+  state.setValue("self.dummyWAddr", BitVec(pcWidth, 6));
+  state.setValue("self.dummyWData", BitVec(1, 0));
+  state.setValue("self.dummyWen", BitVec(1, 0));
 
   state.setMainClock("self.clk");
   state.setClock("self.clk", 0, 1);

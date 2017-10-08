@@ -334,8 +334,12 @@ TEST_CASE("Full machine build") {
   uint memWidth = 1;
 
   Type* resetMachineType =
-    c->Record({{"clk", c->Named("coreir.clkIn")},
-	  {"countOut", c->Array(pcWidth, c->Bit())}});
+    c->Record({
+	{"clk", c->Named("coreir.clkIn")},
+	  {"countOut", c->Array(pcWidth, c->Bit())},
+	    {"dummyWAddr", c->Array(pcWidth, c->BitIn())},
+	      {"dummyWData", c->Array(memWidth, c->BitIn())},
+		{"dummyWen", c->BitIn()}});
 
   Module* resetMachine = global->newModuleDecl("ResetMachine", resetMachineType);
   ModuleDef* def = resetMachine->newModuleDef();
@@ -348,7 +352,7 @@ TEST_CASE("Full machine build") {
 
   def->addInstance("stageCounter", "global.counter", {{"width", Const(1)}});
 
-  def->addInstance("counterAnd", "coreir.andr", {{"width", Const(1)}});
+  def->addInstance("counterAndr", "coreir.andr", {{"width", Const(1)}});
 
   // Creating memory that is always enabled
 
@@ -358,9 +362,13 @@ TEST_CASE("Full machine build") {
 		   {{"init", Const("0")}});
 
   def->addInstance("incR", "global.incReset", {{"width", Const(pcWidth)}});
-  
 
   // Connect machine components
+
+  // Connect dummy memory ports
+  def->connect("self.dummyWAddr", "mainMem.waddr");
+  def->connect("self.dummyWData", "mainMem.wdata");
+  def->connect("self.dummyWen", "mainMem.wen");
 
   // Connect clock to sequential elements
   def->connect("self.clk", "stageCounter.clk");
@@ -370,8 +378,8 @@ TEST_CASE("Full machine build") {
 
   // Connect stage counter to pc
   // TODO: Add andr node to eliminate this hack
-  def->connect("stageCounter.out", "counterAnd.in");
-  def->connect("counterAnd.out", "pc.en");
+  def->connect("stageCounter.out", "counterAndr.in");
+  def->connect("counterAndr.out", "pc.en");
 
   // Connect pc to memory and reset counter
   def->connect("pc.out", "mainMem.raddr");

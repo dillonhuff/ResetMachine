@@ -405,8 +405,9 @@ TEST_CASE("Full machine build") {
   // Simulate
   SimulatorState state(resetMachine);
   state.setMemory("mainMem", BitVec(3, 0), BitVec(1, 0));
-  state.setMemory("mainMem", BitVec(3, 1), BitVec(1, 1));
-  state.setMemory("mainMem", BitVec(3, 2), BitVec(1, 1));
+  state.setMemory("mainMem", BitVec(3, 1), BitVec(1, 0));
+  state.setMemory("mainMem", BitVec(3, 2), BitVec(1, 0));
+  state.setMemory("mainMem", BitVec(3, 3), BitVec(1, 1));
 
   // Set dummy inputs
   state.setValue("self.dummyWAddr", BitVec(pcWidth, 6));
@@ -421,6 +422,15 @@ TEST_CASE("Full machine build") {
   state.run();
 
   cout << "Now on state " << state.getStateIndex() << endl;
+
+  for (int i = 0; i < 100; i++) {
+    state.execute();
+    state.stepClock("self.clk");
+    cout << "mainMem.rdata = " << state.getBitVec("mainMem.rdata") << endl;
+  }
+
+  //cout << "mainMem.raddr = " << state.getBitVec("mainMem.raddr") << endl;
+
   
   resetMachine->print();
 

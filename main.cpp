@@ -352,9 +352,6 @@ TEST_CASE("Full machine build") {
 
   // Creating memory that is always enabled
 
-  Args wArg({{"width", Const(pcWidth)}});
-  def->addInstance("resetConstant", "coreir.const", wArg, {{"value", Const(0)}});
-
   def->addInstance("mainMem",
 		   "coreir.mem",
 		   {{"width", Const(memWidth)},{"depth", Const(memDepth)}},
@@ -375,7 +372,17 @@ TEST_CASE("Full machine build") {
   // TODO: Add andr node to eliminate this hack
   def->connect("stageCounter.out", "counterAnd.in");
   def->connect("counterAnd.out", "pc.en");
-  
+
+  // Connect pc to memory and reset counter
+  def->connect("pc.out", "mainMem.raddr");
+  def->connect("pc.out", "incR.in");
+
+  // Memory output to incReset
+  def->addInstance("rdataAndr", "coreir.andr", {{"width", Const(1)}});
+  def->connect("mainMem.rdata", "rdataAndr.in");
+  def->connect("rdataAndr.out", "incR.selectBit");
+
+  def->connect("incR.out", "pc.in");
 
   // Set definition and save
   resetMachine->setDef(def);

@@ -395,6 +395,12 @@ TEST_CASE("Full machine build") {
   // Set definition and save
   resetMachine->setDef(def);
 
+  // Simulate
+  SimulatorState state(resetMachine);
+  state.setMemory("mainMem", BitVec(3, 0), BitVec(1, 0));
+  state.setMemory("mainMem", BitVec(3, 1), BitVec(1, 0));
+  state.setMemory("mainMem", BitVec(3, 2), BitVec(1, 1));
+  
   resetMachine->print();
 
   cout << "Checking saving and loading pregen" << endl;
